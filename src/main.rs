@@ -15,9 +15,13 @@ fn main(){
     // println!("{}", base);
 
     let path = Path::new("./test.txt");
+    let path_output = Path::new("./test_result.txt");
 
     match Image::new_with_file(path) {
-        Ok(_result) => println!("It's ok {} {}", _result.width, _result.height),
+        Ok(_result) => match _result.save(path_output) {
+            Ok(()) => println!("Write succeded"),
+            Err(err) => println!("{:?}", err)
+        },
         Err(err) => println!("Error: {}", err)
     };
 }

@@ -5,7 +5,7 @@ mod tests;
 use super::pixel::Pixel;
 use std::path::Path;
 use std::io::prelude::*;
-use std::io::{BufReader};
+use std::io::{BufReader, BufWriter};
 use std::fs::File;
 use std::collections::VecDeque;
 use ppm_struct::{PpmStringElement, PpmIntElement, PpmValue};
@@ -69,8 +69,6 @@ impl Image {
                     };
 
                     current_param.set_value(element.to_string());
-
-                    //println!("{}", element);
                 }
             }
         }
@@ -91,20 +89,14 @@ impl Image {
                     let second_value = Image::get_pixel_from_string(inside_line_iter.next())?;
                     let third_value = Image::get_pixel_from_string(inside_line_iter.next())?;
 
-                    pixel_vector.push(Pixel::new(first_value, second_value, third_value))
-
-                    //println!("{} {} {}", line_pixel, second_value, third_value);
+                    pixel_vector.push(Pixel::new(first_value, second_value, third_value));
                 }
             }
         }
-
         
-
         if pixel_vector.len() != ppm_width.value * ppm_height.value {
 
-            println!("{} {}", pixel_vector.len(), ppm_width.value * ppm_height.value);
-
-            //Err(String::from("Invalid file data, pixel number don't respect width and height"))
+            return Err(String::from("Invalid file data, pixel number don't respect width and height"))
         }
 
         Ok(Image{buffer: pixel_vector, width: ppm_width.value, height: ppm_height.value, max_color: ppm_max_color.value, ppm_type: ppm_type.value})
@@ -119,5 +111,34 @@ impl Image {
             },
             None => Err(String::from("Invalid file data"))
         }
+    }
+
+    pub fn save(&self, filename: &Path) -> std::io::Result<()> {
+
+        let file = File::create(filename)?;
+        let mut file = BufWriter::new(file);
+
+        file.write(self.ppm_type.as_bytes())?;
+        file.write(format!("\n{} {}\n{}\n", self.width, self.height, self.max_color).as_bytes())?;
+
+        let mut current_width = 0;
+        let mut current_line_size = 0;
+
+        for pixel in &self.buffer {
+
+            if current_width == self.width || current_line_size > 70 {
+
+                file.write(b"\n")?;
+                current_width = 0;
+                current_line_size = 0;
+            }
+
+            file.write(format!("{} {} {}  ", pixel.red(), pixel.blue(), pixel.green()).as_bytes())?;
+
+            current_width += 1;
+            current_line_size += 7;
+        }
+
+        file.flush()
     }
 }
