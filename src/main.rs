@@ -17,10 +17,15 @@ fn main(){
     let path = Path::new("./test.txt");
     let path_output = Path::new("./test_result.txt");
 
-    match Image::new_with_file(path) {
-        Ok(_result) => match _result.save(path_output) {
-            Ok(()) => println!("Write succeded"),
-            Err(err) => println!("{:?}", err)
+    match Image::new_with_file(path).as_mut() {
+        Ok(result) => {
+
+            result.invert();
+
+            match result.save(path_output) {
+                Ok(()) => println!("Write succeded"),
+                Err(err) => println!("{:?}", err)
+            }
         },
         Err(err) => println!("Error: {}", err)
     };

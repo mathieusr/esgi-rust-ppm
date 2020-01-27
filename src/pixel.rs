@@ -46,7 +46,7 @@ impl Pixel {
 
     pub fn grayscale(&mut self){
 
-        let average = (self.r / 3) + (self.g / 3) + (self.b / 3) + (((self.r % 2) + (self.g % 2) + (self.b % 2)) / 2);
+        let average = (self.r / 3) + (self.g / 3) + (self.b / 3) + (((self.r % 3) + (self.g % 3) + (self.b % 3)) / 3);
 
         self.r = average;
         self.g = average;

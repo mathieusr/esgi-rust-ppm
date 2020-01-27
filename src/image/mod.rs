@@ -1,6 +1,6 @@
 mod ppm_struct;
 #[cfg(test)]
-mod tests;
+pub mod tests;
 
 use super::pixel::Pixel;
 use std::path::Path;
@@ -133,12 +133,28 @@ impl Image {
                 current_line_size = 0;
             }
 
-            file.write(format!("{} {} {}  ", pixel.red(), pixel.blue(), pixel.green()).as_bytes())?;
+            file.write(format!("{} {} {}  ", pixel.red(), pixel.green(), pixel.blue()).as_bytes())?;
 
             current_width += 1;
             current_line_size += 7;
         }
 
         file.flush()
+    }
+
+    pub fn invert(&mut self){
+
+        for pixel in &mut self.buffer {
+
+            pixel.invert();
+        }
+    }
+
+    pub fn grayscale(&mut self){
+
+        for pixel in &mut self.buffer {
+
+            pixel.grayscale();
+        }
     }
 }
