@@ -1,11 +1,12 @@
 mod ppm_struct;
+pub mod extern_ppm_lib;
 #[cfg(test)]
-pub mod tests;
+mod tests;
 
-use super::pixel::Pixel;
+use crate::pixel::Pixel;
 use std::path::Path;
 use std::io::prelude::*;
-use std::io::{BufReader, BufWriter};
+use std::io::{BufReader, BufWriter, Lines};
 use std::fs::File;
 use std::collections::VecDeque;
 use ppm_struct::{PpmStringElement, PpmIntElement, PpmValue};
@@ -46,53 +47,10 @@ impl Image {
             settings.push_back(&mut ppm_height);
             settings.push_back(&mut ppm_max_color);
 
-            while settings.len() != 0 {
-
-                let line = match lines.next() {
-                    Some(temp_line) => match temp_line {
-                        Ok(value) => value,
-                        Err(_err) => return Err(String::from("Invalid file data"))
-                    },
-                    None => return Err(String::from("Invalid file data"))
-                }.to_string();
-
-                if line.get(..1) == Some("#") {
-
-                    continue;
-                }
-
-                for element in line.split_ascii_whitespace() {
-
-                    let current_param = match settings.pop_front() {
-                        Some(param) => param,
-                        None => return Err(String::from("Invalid file data")),
-                    };
-
-                    current_param.set_value(element.to_string());
-                }
-            }
+            Image::read_header(&mut settings, &mut lines)?;
         }
 
-        {
-            for line in lines {
-
-                let line = match line {
-                    Ok(value) => value,
-                    Err(_err) => return Err(String::from("Invalid file data"))
-                };
-
-                let mut inside_line_iter = line.split_ascii_whitespace();
-
-                while let Some(line_pixel) = inside_line_iter.next() {
-
-                    let first_value = Image::get_pixel_from_string(Some(line_pixel))?;
-                    let second_value = Image::get_pixel_from_string(inside_line_iter.next())?;
-                    let third_value = Image::get_pixel_from_string(inside_line_iter.next())?;
-
-                    pixel_vector.push(Pixel::new(first_value, second_value, third_value));
-                }
-            }
-        }
+        Image::read_data(&mut pixel_vector, &mut lines)?;
         
         if pixel_vector.len() != ppm_width.value * ppm_height.value {
 
@@ -100,6 +58,61 @@ impl Image {
         }
 
         Ok(Image{buffer: pixel_vector, width: ppm_width.value, height: ppm_height.value, max_color: ppm_max_color.value, ppm_type: ppm_type.value})
+    }
+
+    fn read_header(settings: &mut VecDeque<&mut dyn PpmValue>, lines: &mut Lines<BufReader<File>>) -> Result<(), String>{
+
+        while settings.len() != 0 {
+
+            let line = match lines.next() {
+                Some(temp_line) => match temp_line {
+                    Ok(value) => value,
+                    Err(_err) => return Err(String::from("Invalid file data"))
+                },
+                None => return Err(String::from("Invalid file data"))
+            }.to_string();
+
+            if line.get(..1) == Some("#") {
+
+                continue;
+            }
+
+            for element in line.split_ascii_whitespace() {
+
+                let current_param = match settings.pop_front() {
+                    Some(param) => param,
+                    None => return Err(String::from("Invalid file data")),
+                };
+
+                current_param.set_value(element.to_string());
+            }
+        }
+
+        Ok(())
+    }
+
+    fn read_data(pixel_vector: &mut Vec<Pixel>, lines: &mut Lines<BufReader<File>>) -> Result<(), String>{
+
+        for line in lines {
+
+            let line = match line {
+                Ok(value) => value,
+                Err(_err) => return Err(String::from("Invalid file data"))
+            };
+
+            let mut inside_line_iter = line.split_ascii_whitespace();
+
+            while let Some(line_pixel) = inside_line_iter.next() {
+
+                let first_value = Image::get_pixel_from_string(Some(line_pixel))?;
+                let second_value = Image::get_pixel_from_string(inside_line_iter.next())?;
+                let third_value = Image::get_pixel_from_string(inside_line_iter.next())?;
+
+                pixel_vector.push(Pixel::new(first_value, second_value, third_value));
+            }
+        }
+
+        Ok(())
     }
 
     fn get_pixel_from_string(current_value: Option<&str>) -> Result<u8, String> {

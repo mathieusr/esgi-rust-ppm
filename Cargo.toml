@@ -3,6 +3,7 @@ name = "ppm"
 version = "0.1.0"
 authors = ["Mathieu <mathieu.0598@gmail.com>"]
 edition = "2018"
+build = "src/build.rs"
 
 [lib]
 name = "ppm"
@@ -12,7 +13,9 @@ crate-type = ["dylib", "rlib"]
 
 [dependencies]
 criterion = "0.3"
+libc = "0.2.0"
 
 [[bench]]
 name = "image_benchmark"
 harness = false
+
