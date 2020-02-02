@@ -6,7 +6,7 @@ mod tests;
 use crate::pixel::Pixel;
 use std::path::Path;
 use std::io::prelude::*;
-use std::io::{BufReader, BufWriter, Lines};
+use std::io::{BufReader, BufWriter};
 use std::fs::File;
 use std::collections::VecDeque;
 use ppm_struct::{PpmStringElement, PpmIntElement, PpmValue};
@@ -29,8 +29,7 @@ impl Image {
             Ok(file) => file,
             Err(_e) => return Err(String::from("Can't open the file")),
         };
-        let f = BufReader::new(f);
-        let mut lines = f.lines();
+        let mut f = BufReader::new(f);
 
         let mut ppm_type = PpmStringElement{name: String::from("ppm type"), value: String::new()};
         let mut ppm_width = PpmIntElement{name: String::from("ppm width"), value: 0};
@@ -47,10 +46,10 @@ impl Image {
             settings.push_back(&mut ppm_height);
             settings.push_back(&mut ppm_max_color);
 
-            Image::read_header(&mut settings, &mut lines)?;
+            Image::read_header(&mut settings, &mut f)?;
         }
 
-        Image::read_data(&mut pixel_vector, &mut lines)?;
+        Image::read_data(&mut pixel_vector, &mut f)?;
         
         if pixel_vector.len() != ppm_width.value * ppm_height.value {
 
@@ -60,24 +59,85 @@ impl Image {
         Ok(Image{buffer: pixel_vector, width: ppm_width.value, height: ppm_height.value, max_color: ppm_max_color.value, ppm_type: ppm_type.value})
     }
 
-    fn read_header(settings: &mut VecDeque<&mut dyn PpmValue>, lines: &mut Lines<BufReader<File>>) -> Result<(), String>{
+    pub fn new_with_file_bin(filename: &Path) -> Result<Image, String> {
+
+        let f = match File::open(filename){
+            Ok(file) => file,
+            Err(_e) => return Err(String::from("Can't open the file")),
+        };
+        let mut buff = Vec::<u8>::new();
+        let mut f = BufReader::new(f);
+
+        let mut ppm_type = PpmStringElement{name: String::from("ppm type"), value: String::new()};
+        let mut ppm_width = PpmIntElement{name: String::from("ppm width"), value: 0};
+        let mut ppm_height = PpmIntElement{name: String::from("ppm height"), value: 0};
+        let mut ppm_max_color = PpmIntElement{name: String::from("ppm max color"), value: 0};
+
+        let mut pixel_vector: Vec<Pixel> = Vec::new();
+        
+
+        {
+            let mut settings: VecDeque<&mut dyn PpmValue> = VecDeque::new();
+            settings.push_back(&mut ppm_type);
+            settings.push_back(&mut ppm_width);
+            settings.push_back(&mut ppm_height);
+            settings.push_back(&mut ppm_max_color);
+
+            Image::read_header(&mut settings, &mut f)?;
+        }
+
+        loop {
+
+            match f.read_until(255, &mut buff) {
+                Ok(read_size) => {
+
+                    if read_size == 0 {
+
+                        break;
+                    }
+                    read_size
+                },
+                Err(_e) => break,
+            };
+
+            while buff.len() >= 3 {
+
+                let r = buff.remove(0);
+                let g = buff.remove(0);
+                let b = buff.remove(0);
+
+                pixel_vector.push(Pixel::new(r, g, b));
+            }
+        }
+
+        Ok(Image{buffer: pixel_vector, width: ppm_width.value, height: ppm_height.value, max_color: ppm_max_color.value, ppm_type: ppm_type.value})
+    }
+
+    fn read_header(settings: &mut VecDeque<&mut dyn PpmValue>, buffer: &mut BufReader<File>) -> Result<(), String>{
+
+        let mut temp_string = String::from("");
 
         while settings.len() != 0 {
 
-            let line = match lines.next() {
-                Some(temp_line) => match temp_line {
-                    Ok(value) => value,
-                    Err(_err) => return Err(String::from("Invalid file data"))
+            let _read_size = match buffer.read_line(&mut temp_string) {
+                Ok(read_size) => {
+                    if read_size == 0 && settings.len() != 0 {
+
+                        return Err(String::from("Invalid file data"));
+                    }
+
+                    read_size
                 },
-                None => return Err(String::from("Invalid file data"))
-            }.to_string();
+                Err(_e) => return Err(String::from("Invalid file data"))
+            };
 
-            if line.get(..1) == Some("#") {
+            if temp_string.get(..1) == Some("#") {
 
+                temp_string.clear();
                 continue;
             }
 
-            for element in line.split_ascii_whitespace() {
+            for element in temp_string.split_ascii_whitespace() {
 
                 let current_param = match settings.pop_front() {
                     Some(param) => param,
@@ -86,21 +146,32 @@ impl Image {
 
                 current_param.set_value(element.to_string());
             }
+
+            temp_string.clear();
         }
 
         Ok(())
     }
 
-    fn read_data(pixel_vector: &mut Vec<Pixel>, lines: &mut Lines<BufReader<File>>) -> Result<(), String>{
+    fn read_data(pixel_vector: &mut Vec<Pixel>, buffer: &mut BufReader<File>) -> Result<(), String>{
 
-        for line in lines {
+        let mut temp_string = String::from("");
 
-            let line = match line {
-                Ok(value) => value,
-                Err(_err) => return Err(String::from("Invalid file data"))
+        loop {
+
+            let _read_size = match buffer.read_line(&mut temp_string) {
+                Ok(read_size) => {
+                    if read_size == 0 {
+
+                        break;
+                    }
+
+                    read_size
+                },
+                Err(_e) => return Err(String::from("Invalid file data"))
             };
 
-            let mut inside_line_iter = line.split_ascii_whitespace();
+            let mut inside_line_iter = temp_string.split_ascii_whitespace();
 
             while let Some(line_pixel) = inside_line_iter.next() {
 
@@ -110,6 +181,8 @@ impl Image {
 
                 pixel_vector.push(Pixel::new(first_value, second_value, third_value));
             }
+
+            temp_string.clear();
         }
 
         Ok(())
@@ -131,7 +204,7 @@ impl Image {
         let file = File::create(filename)?;
         let mut file = BufWriter::new(file);
 
-        file.write(self.ppm_type.as_bytes())?;
+        file.write("P3".as_bytes())?;
         file.write(format!("\n{} {}\n{}\n", self.width, self.height, self.max_color).as_bytes())?;
 
         let mut current_width = 0;
@@ -150,6 +223,22 @@ impl Image {
 
             current_width += 1;
             current_line_size += 7;
+        }
+
+        file.flush()
+    }
+
+    pub fn save_bin(&self, filename: &Path) -> std::io::Result<()> {
+
+        let file = File::create(filename)?;
+        let mut file = BufWriter::new(file);
+
+        file.write("P6".as_bytes())?;
+        file.write(format!("\n{} {}\n{}\n", self.width, self.height, self.max_color).as_bytes())?;
+
+        for pixel in &self.buffer {
+
+            file.write(&[pixel.red(), pixel.green(), pixel.blue()])?;
         }
 
         file.flush()

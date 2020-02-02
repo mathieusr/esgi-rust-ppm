@@ -61,6 +61,20 @@ fn check_extern_lib_read_and_write() {
     std::fs::remove_file(path).expect("Finally try to delete the file");
 }
 
+#[test]
+fn check_read_and_write_bin(){
+
+    let image = get_image();
+    let path = Path::new("unit_test_bin.ppm");
+    image.save_bin(path).expect("Try to write to file");
+    let image_read = Image::new_with_file_bin(path).expect("Try to read write file in test");
+
+    check_default_image_param(&image_read);
+    
+
+    std::fs::remove_file(path).expect("Finally try to delete the file");
+}
+
 pub fn check_default_image_param(image_read: &Image) {
 
     let first_pixel = image_read.buffer.first().expect("Try to get one pixel");
