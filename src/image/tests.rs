@@ -72,7 +72,7 @@ fn check_read_and_write_bin(){
     check_default_image_param(&image_read);
     
 
-    std::fs::remove_file(path).expect("Finally try to delete the file");
+    //std::fs::remove_file(path).expect("Finally try to delete the file");
 }
 
 pub fn check_default_image_param(image_read: &Image) {

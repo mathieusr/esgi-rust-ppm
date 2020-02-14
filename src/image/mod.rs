@@ -1,4 +1,4 @@
-mod ppm_struct;
+pub mod ppm_struct;
 pub mod extern_ppm_lib;
 #[cfg(test)]
 mod tests;
