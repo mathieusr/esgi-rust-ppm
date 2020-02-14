@@ -126,7 +126,7 @@ impl ImageBinary {
                 max
             };
 
-            let mut slice_reader = &mut read_buffer[1..((buff_size + 1) as usize)];
+            let mut slice_reader = &mut read_buffer[0..((buff_size ) as usize)];
 
             self.buffer.read_exact(&mut slice_reader)?;
 

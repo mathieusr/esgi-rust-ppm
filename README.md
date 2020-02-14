@@ -77,6 +77,29 @@ You can easily invert the color or your image
 image.invert()
 ```
 
+## Binary file
+
+The previous function we seen to manage ppm binary are not made to treat big file. To handle huge file we have created new function to read, modify and write binary file without puting all the content in memory
+
+### Read 
+```
+extern crate ppm;
+
+use std::path::Path;
+
+let mut image = ppm::image_binary::ImageBinary::new_with_file(Path::new("output.ppm")).unwrap();
+```
+
+### Grayscale and save image
+```
+image.grayscale(Path::new("test_result_gray.txt"))
+```
+
+### Invert and save image
+```
+image.invert(Path::new("test_result_gray.txt"))
+```
+
 ## Tests
 
 The library includes different type of tests
